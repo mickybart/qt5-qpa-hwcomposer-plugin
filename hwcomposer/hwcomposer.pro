@@ -28,7 +28,7 @@ SOURCES += hwcomposer_backend_v11.cpp
 HEADERS += hwcomposer_backend_v11.h
 
 
-QT += core-private gui-private platformsupport-private dbus
+QT += core-private gui-private egl_support-private fontdatabase_support-private theme_support-private eventdispatcher_support-private dbus
 
 DEFINES += QEGL_EXTRA_DEBUG
 CONFIG += egl qpa/genericunixfontdatabase
