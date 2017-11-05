@@ -137,6 +137,7 @@ QSurfaceFormat HwComposerContext::surfaceFormatFor(const QSurfaceFormat &inputFo
         newFormat.setGreenBufferSize(8);
         newFormat.setBlueBufferSize(8);
     }
+    newFormat.setRenderableType(QSurfaceFormat::OpenGLES);
 
     return newFormat;
 }
