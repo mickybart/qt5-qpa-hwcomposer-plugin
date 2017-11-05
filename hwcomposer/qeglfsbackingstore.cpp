@@ -47,6 +47,7 @@
 #include <QtGui/QOpenGLShaderProgram>
 
 #include <QtGui/QScreen>
+#include <QtGui/QOpenGLFunctions>
 
 QT_BEGIN_NAMESPACE
 
@@ -55,6 +56,7 @@ QEglFSBackingStore::QEglFSBackingStore(QWindow *window)
     , m_context(new QOpenGLContext)
     , m_texture(0)
     , m_program(0)
+    , m_funcs(0)
 {
     m_context->setFormat(window->requestedFormat());
     m_context->setScreen(window->screen());
@@ -133,13 +135,13 @@ void QEglFSBackingStore::flush(QWindow *window, const QRegion &region, const QPo
         x1, y2
     };
 
-    glEnableVertexAttribArray(m_vertexCoordEntry);
-    glEnableVertexAttribArray(m_textureCoordEntry);
+    m_funcs->glEnableVertexAttribArray(m_vertexCoordEntry);
+    m_funcs->glEnableVertexAttribArray(m_textureCoordEntry);
 
-    glVertexAttribPointer(m_vertexCoordEntry, 2, GL_FLOAT, GL_FALSE, 0, vertexCoordinates);
-    glVertexAttribPointer(m_textureCoordEntry, 2, GL_FLOAT, GL_FALSE, 0, textureCoordinates);
+    m_funcs->glVertexAttribPointer(m_vertexCoordEntry, 2, GL_FLOAT, GL_FALSE, 0, vertexCoordinates);
+    m_funcs->glVertexAttribPointer(m_textureCoordEntry, 2, GL_FLOAT, GL_FALSE, 0, textureCoordinates);
 
-    glBindTexture(GL_TEXTURE_2D, m_texture);
+    m_funcs->glBindTexture(GL_TEXTURE_2D, m_texture);
 
     if (!m_dirty.isNull()) {
         QRect imageRect = m_image.rect();
@@ -163,9 +165,9 @@ void QEglFSBackingStore::flush(QWindow *window, const QRegion &region, const QPo
             // if the sub-rect is full-width we can pass the image data directly to
             // OpenGL instead of copying, since there's no gap between scanlines
             if (rect.width() == imageRect.width()) {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, rect.y(), rect.width(), rect.height(), GL_RGBA, GL_UNSIGNED_BYTE, m_image.constScanLine(rect.y()));
+                m_funcs->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, rect.y(), rect.width(), rect.height(), GL_RGBA, GL_UNSIGNED_BYTE, m_image.constScanLine(rect.y()));
             } else {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, rect.x(), rect.y(), rect.width(), rect.height(), GL_RGBA, GL_UNSIGNED_BYTE,
+                m_funcs->glTexSubImage2D(GL_TEXTURE_2D, 0, rect.x(), rect.y(), rect.width(), rect.height(), GL_RGBA, GL_UNSIGNED_BYTE,
                     m_image.copy(rect).constBits());
             }
         }
@@ -173,12 +175,12 @@ void QEglFSBackingStore::flush(QWindow *window, const QRegion &region, const QPo
         m_dirty = QRegion();
     }
 
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    m_funcs->glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
     m_program->release();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisableVertexAttribArray(m_vertexCoordEntry);
-    glDisableVertexAttribArray(m_textureCoordEntry);
+    m_funcs->glBindTexture(GL_TEXTURE_2D, 0);
+    m_funcs->glDisableVertexAttribArray(m_vertexCoordEntry);
+    m_funcs->glDisableVertexAttribArray(m_textureCoordEntry);
 
     m_context->swapBuffers(window);
 
@@ -191,6 +193,7 @@ void QEglFSBackingStore::makeCurrent()
     window()->setSurfaceType(QSurface::OpenGLSurface);
     (static_cast<QEglFSWindow *>(window()->handle()))->create();
     m_context->makeCurrent(window());
+    m_funcs = m_context->functions();
 }
 
 void QEglFSBackingStore::beginPaint(const QRegion &rgn)
@@ -208,16 +211,17 @@ void QEglFSBackingStore::resize(const QSize &size, const QRegion &staticContents
 
     m_image = QImage(size, QImage::Format_RGB32);
     makeCurrent();
-    if (m_texture)
-        glDeleteTextures(1, &m_texture);
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.width(), size.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    if (m_texture)
+        m_funcs->glDeleteTextures(1, &m_texture);
+    m_funcs->glGenTextures(1, &m_texture);
+    m_funcs->glBindTexture(GL_TEXTURE_2D, m_texture);
+    m_funcs->glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    m_funcs->glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    m_funcs->glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    m_funcs->glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    m_funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.width(), size.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 }
 
 QT_END_NAMESPACE

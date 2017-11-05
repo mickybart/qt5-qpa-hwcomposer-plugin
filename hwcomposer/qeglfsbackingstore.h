@@ -52,6 +52,7 @@ QT_BEGIN_NAMESPACE
 class QOpenGLContext;
 class QOpenGLPaintDevice;
 class QOpenGLShaderProgram;
+class QOpenGLFunctions;
 
 class QEglFSBackingStore : public QPlatformBackingStore
 {
@@ -71,6 +72,7 @@ private:
     void makeCurrent();
 
     QOpenGLContext *m_context;
+    QOpenGLFunctions *m_funcs;
     QImage m_image;
     uint m_texture;
     QRegion m_dirty;
